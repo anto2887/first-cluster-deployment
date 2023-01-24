@@ -101,12 +101,12 @@ resource "aws_lb_listener" "project1alblist" {
 resource "aws_launch_template" "project1lt" {
   name_prefix   = "project1lt"
   image_id      = "ami-05e7fa5a3b6085a75"
-  instance_type = "t2.micro"
+  instance_type = "t2.medium"
   block_device_mappings {
     device_name = "/dev/sda1"
 
     ebs {
-      volume_size = 20
+      volume_size = 80
     }
   }
 }
@@ -114,11 +114,11 @@ resource "aws_launch_template" "project1lt" {
 resource "aws_autoscaling_group" "project1asg" {
   name                      = "project1asg"
   max_size                  = 2
-  min_size                  = 2
-  health_check_grace_period = 300
-  health_check_type         = "ELB"
+  min_size                  = 1
+#   health_check_grace_period = 20000
+  health_check_type         = "EC2"
   desired_capacity          = 2
-  force_delete              = true
+  force_delete              = false
   vpc_zone_identifier       = [aws_subnet.project1subnet1.id, aws_subnet.project1subnet2.id]
   target_group_arns          = [aws_lb_target_group.project1tg.arn]
   launch_template {
@@ -126,6 +126,16 @@ resource "aws_autoscaling_group" "project1asg" {
     version = "$Latest"
   }
 }
+
+# Creating the autoscaling policy of the autoscaling group
+resource "aws_autoscaling_policy" "prj1asgpolicy" {
+  name                   = "prj1asgpolicy"
+  scaling_adjustment     = 2
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 300
+  autoscaling_group_name = aws_autoscaling_group.project1asg.name
+}
+
 
 resource "aws_ecs_cluster" "project1cluster" {
   name = "project1cluster"
@@ -156,14 +166,14 @@ resource "aws_ecs_service" "project1svc" {
   }
 }
 
-resource "aws_ecs_task_set" "project1ts" {
-  service         = aws_ecs_service.project1svc.id
-  cluster         = aws_ecs_cluster.project1cluster.id
-  task_definition = aws_ecs_task_definition.project1td.arn
-
-  load_balancer {
-    target_group_arn = aws_lb_target_group.project1tg.arn
-    container_name   = "project1td"
-    container_port   = 80
-  }
-}
+# resource "aws_ecs_task_set" "project1ts" {
+#   service         = aws_ecs_service.project1svc.id
+#   cluster         = aws_ecs_cluster.project1cluster.id
+#   task_definition = aws_ecs_task_definition.project1td.arn
+#
+#   load_balancer {
+#     target_group_arn = aws_lb_target_group.project1tg.arn
+#     container_name   = "project1td"
+#     container_port   = 80
+#   }
+# }
